@@ -1,0 +1,183 @@
+# --------------------------------------------------
+# agentic_browser_v2 / tools\graph_tools.py
+# --------------------------------------------------
+"""
+Meta Graph API tools — official API calls, no browser involved. Prefer
+these over browser automation whenever the target is your own Page/IG
+Business account: officially supported, faster, UI-change-proof.
+"""
+
+import os
+
+from langchain_core.tools import tool
+
+from graph_api import comments as graph_comments
+from graph_api import instagram as graph_instagram
+from graph_api import leads as graph_leads
+from graph_api import messaging as graph_messaging
+from graph_api import pages as graph_pages
+
+
+@tool
+async def graph_create_facebook_post(message: str, image_path: str | None = None) -> str:
+    """Creates a post on the Facebook PAGE (not a personal profile — Graph
+    API can't post to those). image_path can be a local file (uploaded
+    directly) or a public URL."""
+    try:
+        if image_path:
+            result = await graph_pages.create_photo_post(image_path, caption=message)
+        else:
+            result = await graph_pages.create_text_post(message)
+        return f"Created Facebook Page post: {result}"
+    except Exception as e:
+        return f"Error creating Facebook Page post: {e}"
+
+
+@tool
+async def graph_publish_instagram_photo(image_url: str, caption: str = "") -> str:
+    """Publishes a photo to the Instagram Business account. image_url
+    MUST be a public URL — Instagram has no direct local-file upload."""
+    try:
+        result = await graph_instagram.publish_photo(image_url, caption)
+        return f"Published Instagram photo: {result}"
+    except Exception as e:
+        return f"Error publishing Instagram photo: {e}"
+
+
+@tool
+async def graph_list_unreplied_comments(recent_posts_limit: int = 50) -> str:
+    """Returns every unreplied comment across the Page's recent posts, at
+    any nesting depth (including replies-to-replies). Each entry has a
+    comment_id, commenter name, message, and depth. Use
+    graph_reply_to_comment with a comment_id to respond."""
+    try:
+        result = await graph_comments.list_unreplied_comments(recent_posts_limit)
+        if not result:
+            return "No unreplied comments found."
+        return str(result)
+    except Exception as e:
+        return f"Error listing unreplied comments: {e}"
+
+
+@tool
+async def graph_reply_to_comment(comment_id: str, message: str) -> str:
+    """Posts a reply to a specific comment, as the Page."""
+    try:
+        result = await graph_comments.reply_to_comment(comment_id, message)
+        return f"Replied to comment {comment_id}: {result}"
+    except Exception as e:
+        return f"Error replying to comment {comment_id}: {e}"
+
+
+@tool
+async def graph_list_unreplied_instagram_comments(recent_media_limit: int = 50) -> str:
+    """Returns Instagram comments on recent media that haven't been
+    replied to yet — each with media_id, comment_id, from_name, and
+    message. Use graph_reply_to_instagram_comment with a comment_id to
+    respond."""
+    try:
+        result = await graph_instagram.list_unreplied_comments(recent_media_limit)
+        if not result:
+            return "No unreplied Instagram comments found."
+        return str(result)
+    except Exception as e:
+        return f"Error listing unreplied Instagram comments: {e}"
+
+
+@tool
+async def graph_reply_to_instagram_comment(comment_id: str, message: str) -> str:
+    """Replies to a specific Instagram comment, as the account. Get
+    comment_id from graph_list_unreplied_instagram_comments first."""
+    try:
+        result = await graph_instagram.reply_to_comment(comment_id, message)
+        return f"Replied to Instagram comment {comment_id}: {result}"
+    except Exception as e:
+        return f"Error replying to Instagram comment {comment_id}: {e}"
+
+
+@tool
+async def graph_fetch_leads(form_id: str) -> str:
+    """Fetches Lead Ads submissions for a form_id (use
+    graph_list_lead_forms to find one)."""
+    try:
+        result = await graph_leads.get_leads(form_id)
+        return str(result)
+    except Exception as e:
+        return f"Error fetching leads: {e}"
+
+
+@tool
+async def graph_list_lead_forms(page_id: str | None = None) -> str:
+    """Lists Lead Ads forms on a Page. Defaults to .env's FB_PAGE_ID."""
+    try:
+        pid = page_id or os.environ["FB_PAGE_ID"]
+        result = await graph_leads.list_lead_forms(pid)
+        return str(result)
+    except Exception as e:
+        return f"Error listing lead forms: {e}"
+
+
+@tool
+async def graph_list_unreplied_messages(limit: int = 25) -> str:
+    """Returns Page Messenger conversations with unread messages — each
+    with conversation_id, sender_psid, sender_name, and their latest
+    message. Use graph_reply_to_message with sender_psid to respond."""
+    try:
+        result = await graph_messaging.list_unreplied_conversations(limit)
+        if not result:
+            return "No unread Messenger conversations found."
+        return str(result)
+    except Exception as e:
+        return f"Error listing unreplied messages: {e}"
+
+
+@tool
+async def graph_reply_to_message(sender_psid: str, message: str) -> str:
+    """Sends a Messenger reply to a person, as the Page, using their
+    sender_psid from graph_list_unreplied_messages."""
+    try:
+        result = await graph_messaging.send_message(sender_psid, message)
+        return f"Sent message to {sender_psid}: {result}"
+    except Exception as e:
+        return f"Error sending message to {sender_psid}: {e}"
+
+
+@tool
+async def graph_list_unreplied_instagram_messages(limit: int = 25) -> str:
+    """Returns Instagram DM conversations with unread messages — each
+    with conversation_id, sender_igsid, sender_name, and their latest
+    message. Use graph_reply_to_instagram_message to respond."""
+    try:
+        result = await graph_instagram.list_unreplied_conversations(limit)
+        if not result:
+            return "No unread Instagram DM conversations found."
+        return str(result)
+    except Exception as e:
+        return f"Error listing unreplied Instagram messages: {e}"
+
+
+@tool
+async def graph_reply_to_instagram_message(sender_igsid: str, message: str) -> str:
+    """Sends an Instagram DM reply to a person, using their sender_igsid
+    from graph_list_unreplied_instagram_messages."""
+    try:
+        result = await graph_instagram.send_message(sender_igsid, message)
+        return f"Sent Instagram message to {sender_igsid}: {result}"
+    except Exception as e:
+        return f"Error sending Instagram message to {sender_igsid}: {e}"
+
+
+GRAPH_API_TOOLS = [
+    graph_create_facebook_post,
+    graph_publish_instagram_photo,
+    graph_list_unreplied_comments,
+    graph_reply_to_comment,
+    graph_list_unreplied_instagram_comments,
+    graph_reply_to_instagram_comment,
+    graph_list_unreplied_messages,
+    graph_reply_to_message,
+    graph_list_unreplied_instagram_messages,
+    graph_reply_to_instagram_message,
+    graph_fetch_leads,
+    graph_list_lead_forms,
+]
