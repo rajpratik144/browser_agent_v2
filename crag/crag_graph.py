@@ -1,3 +1,6 @@
+# --------------------------------------------------
+# agentic_browser_v2 / crag\crag_graph.py
+# --------------------------------------------------
 """
 The CRAG pipeline: retrieve -> grade each chunk -> branch -> optionally
 web search -> generate. A separate small LangGraph from the browser
@@ -71,7 +74,7 @@ def build_crag_graph(retriever, allow_web_search: bool = False):
 
     async def generate(state: CragState):
         context = "\n\n---\n\n".join(state["relevant_docs"]) or "(No relevant information found.)"
-        prompt = (
+        prompt = (  
             "Answer the question using ONLY the context below. If the "
             "context doesn't actually contain the answer, say plainly that "
             "you don't have that information rather than guessing — this "

@@ -37,6 +37,17 @@ async def create_photo_post(image_path: str, caption: str = "") -> dict:
         )
 
 
+async def create_video_post(video_path_or_url: str, caption: str = "") -> dict:
+    """Posts a video to the Page's feed. video_path_or_url can be a local
+    file path (uploaded directly) or a public video URL."""
+    data = {"description": caption}
+    if video_path_or_url.startswith("http://") or video_path_or_url.startswith("https://"):
+        data["file_url"] = video_path_or_url
+        return await graph_post(f"{_page_id()}/videos", data=data)
+    with open(video_path_or_url, "rb") as f:
+        return await graph_post(f"{_page_id()}/videos", data=data, files={"source": f})
+
+
 async def get_recent_posts(limit: int = 10) -> dict:
     """Reads the Page's most recent posts (id, message, created_time)."""
     return await graph_get(

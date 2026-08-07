@@ -18,7 +18,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from agent.orchestrator import run_agent_task
-from content_queue import csv_queue
+from content_queue import db_queue
 
 RESULTS_LOG = Path("results.jsonl")
 
@@ -30,18 +30,25 @@ def _log_result(result: dict):
 
 
 async def job_post_from_queue():
-    topic_row = csv_queue.peek_next_topic()
+    topic_row = db_queue.peek_next_topic()
     if not topic_row:
         print("[queue] No topics waiting — skipping this run.")
         return
+    task_name = "instagram_post_from_topic" if topic_row["platform"] == "instagram" else "facebook_post_from_topic"
     result = await run_agent_task(
-        "facebook_post_from_topic",
-        {"topic": topic_row["topic"], "instructions": topic_row["instructions"]},
+        task_name,
+        {
+            "topic": topic_row["topic"],
+            "instructions": topic_row["instructions"],
+            "image_url": topic_row["image_url"],
+        },
         use_browser=False,
     )
     _log_result(result)
     if result.get("success"):
-        csv_queue.remove_next_topic()
+        db_queue.mark_posted(topic_row["id"], str(result.get("result", "")))
+    else:
+        db_queue.mark_failed(topic_row["id"], str(result.get("result", "")))
 
 
 async def job_reply_to_comments():

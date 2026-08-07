@@ -19,6 +19,11 @@ TASK_PROMPTS = {
         "video and report its title, total view count, and total like "
         "count. Then call finish with those details."
     ),
+    "wikipedia_text_extraction": (
+        'Go to "https://en.wikipedia.org/wiki/{topic}". Call extract_text '
+        "to read the page content. Summarize the main points in a few "
+        "sentences, then call finish with that summary."
+    ),
 
     # ============================================================
     # LEGACY — personal Facebook/Instagram PROFILE browser automation.
@@ -176,9 +181,44 @@ TASK_PROMPTS = {
     "facebook_post_from_topic": (
         "Write a short, engaging Facebook post about this topic: "
         "\"{topic}\". Follow these instructions: \"{instructions}\". Keep "
-        "it natural and not overly promotional. Then call "
-        "graph_create_facebook_post with your written text as the "
-        "message. Call finish confirming the post was created."
+        "it natural and not overly promotional. "
+        "If an image_url is given below, use it as-is. If not, come up "
+        "with a short, concrete visual description matching the topic "
+        "(e.g. \"a doctor reviewing an X-ray on a tablet\") and call "
+        "generate_image_for_post with that description to get an "
+        "image_url. "
+        "image_url: \"{image_url}\" "
+        "Then call graph_create_facebook_post with your written text as "
+        "the message, and the image_url (given or generated) as "
+        "image_path. Call finish confirming the post was created."
+    ),
+    "instagram_post_from_topic": (
+        "Write a short, engaging Instagram caption about this topic: "
+        "\"{topic}\". Follow these instructions: \"{instructions}\". "
+        "Instagram posts always need an image. If an image_url is given "
+        "below, use it as-is. If not, come up with a short, concrete "
+        "visual description matching the topic and call "
+        "generate_image_for_post with that description to get an "
+        "image_url. "
+        "image_url: \"{image_url}\" "
+        "Then call graph_publish_instagram_photo with that image_url and "
+        "your written caption. Call finish confirming the post was "
+        "created."
+    ),
+    "facebook_post_video": (
+        "Write a short Facebook caption for a video about this topic: "
+        "\"{topic}\". Follow these instructions: \"{instructions}\". Then "
+        "call graph_create_facebook_video_post with video_path_or_url="
+        "\"{video_url}\" and your caption as the message. Call finish "
+        "confirming the post was created."
+    ),
+    "instagram_post_reel": (
+        "Write a short Instagram caption for a Reel about this topic: "
+        "\"{topic}\". Follow these instructions: \"{instructions}\". Then "
+        "call graph_publish_instagram_reel with video_url=\"{video_url}\" "
+        "and your caption. This can take a couple minutes to process — "
+        "wait for the result rather than assuming failure. Call finish "
+        "confirming the post was created."
     ),
     # Add more named tasks here as you need them — see docs/ADDING_FEATURES.md.
 }

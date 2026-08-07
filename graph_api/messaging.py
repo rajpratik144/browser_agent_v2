@@ -1,12 +1,11 @@
-# --------------------------------------------------
-# agentic_browser_v2 / graph_api\messaging.py
-# --------------------------------------------------
 """
 Facebook Page Messenger — reading conversations and sending replies as
 the Page. Requires pages_messaging granted to the token. Subject to
 Meta's messaging policy: you can generally only message someone who
 messaged the Page first, within its response window.
 """
+
+import json
 
 from .client import graph_get, graph_post
 from .pages import _page_id
@@ -36,8 +35,8 @@ async def send_message(recipient_id: str, message: str) -> dict:
     return await graph_post(
         "me/messages",
         data={
-            "recipient": f'{{"id":"{recipient_id}"}}',
-            "message": f'{{"text":"{message}"}}',
+            "recipient": json.dumps({"id": recipient_id}),
+            "message": json.dumps({"text": message}),
             "messaging_type": "RESPONSE",
         },
     )

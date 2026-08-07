@@ -13,6 +13,7 @@ from browser.browser import BrowserController
 from .browser_tools import build_browser_tools
 from .crag_tools import CRAG_TOOLS
 from .graph_tools import GRAPH_API_TOOLS
+from .image_gen_tools import IMAGE_GEN_TOOLS
 from .vision_tools import build_vision_tools
 
 
@@ -26,7 +27,7 @@ def build_tools(browser: BrowserController | None = None) -> list:
     """Pass browser=None for Graph API-only tasks (no browser needed at
     all — skips launching Playwright entirely). Requires ENABLE_VISION=
     False in agent/graph.py when browser is None."""
-    tools = [*CRAG_TOOLS, *GRAPH_API_TOOLS, finish]
+    tools = [*CRAG_TOOLS, *GRAPH_API_TOOLS, *IMAGE_GEN_TOOLS, finish]
     if browser is not None:
         tools = [*build_browser_tools(browser), *build_vision_tools(browser), *tools]
     return tools

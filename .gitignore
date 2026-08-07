@@ -8,3 +8,4 @@ last_vision_frame.png
 __pycache__/
 *.pyc
 .venv/
+agentic_browser.db

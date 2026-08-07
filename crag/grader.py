@@ -1,3 +1,6 @@
+# --------------------------------------------------
+# agentic_browser_v2 / crag\grader.py
+# --------------------------------------------------
 """
 Relevance grading: for each retrieved chunk, ask the LLM a focused yes/no
 question — "is this chunk actually relevant to the question?" — using

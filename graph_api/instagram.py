@@ -1,7 +1,3 @@
-# --------------------------------------------------
-# agentic_browser_v2 / graph_api\instagram.py
-# --------------------------------------------------
-
 """
 Instagram Business/Creator account actions via Graph API. Requires
 instagram_content_publish granted to the token, and IG_BUSINESS_ACCOUNT_ID
@@ -22,6 +18,7 @@ Publishing is always two calls, not one:
 """
 
 import asyncio
+import json
 import os
 
 from .client import graph_get, graph_post
@@ -35,14 +32,25 @@ def _ig_user_id() -> str:
     return ig_id
 
 
-async def create_media_container(image_url: str, caption: str = "") -> str:
-    """Step 1: tells Meta to fetch and process the image. Returns a
+async def create_media_container(
+    image_url: str | None = None,
+    caption: str = "",
+    video_url: str | None = None,
+    media_type: str | None = None,
+) -> str:
+    """Step 1: tells Meta to fetch and process the media. Pass image_url
+    for a photo, or video_url + media_type="REELS" for a Reel. Returns a
     creation_id — pass this to publish_container() once processing is
     done (see wait_until_ready)."""
-    result = await graph_post(
-        f"{_ig_user_id()}/media",
-        data={"image_url": image_url, "caption": caption},
-    )
+    data = {"caption": caption}
+    if video_url:
+        data["video_url"] = video_url
+        data["media_type"] = media_type or "REELS"
+    elif image_url:
+        data["image_url"] = image_url
+    else:
+        raise ValueError("create_media_container needs image_url or video_url")
+    result = await graph_post(f"{_ig_user_id()}/media", data=data)
     return result["id"]
 
 
@@ -54,8 +62,9 @@ async def get_container_status(creation_id: str) -> str:
 
 async def wait_until_ready(creation_id: str, timeout_seconds: int = 60) -> None:
     """Photos usually finish in a couple seconds; videos/Reels can take
-    much longer. Polls status_code until FINISHED, or raises on
-    ERROR/EXPIRED/timeout."""
+    much longer (use a bigger timeout_seconds for those — see
+    publish_reel's default). Polls status_code until FINISHED, or raises
+    on ERROR/EXPIRED/timeout."""
     elapsed = 0
     interval = 2
     while elapsed < timeout_seconds:
@@ -78,8 +87,17 @@ async def publish_container(creation_id: str) -> dict:
 
 async def publish_photo(image_url: str, caption: str = "") -> dict:
     """Convenience wrapper: create container -> wait -> publish, in one call."""
-    creation_id = await create_media_container(image_url, caption)
+    creation_id = await create_media_container(image_url=image_url, caption=caption)
     await wait_until_ready(creation_id)
+    return await publish_container(creation_id)
+
+
+async def publish_reel(video_url: str, caption: str = "", timeout_seconds: int = 300) -> dict:
+    """Convenience wrapper for a Reel: create container -> wait -> publish.
+    Video processing is much slower than photos — default timeout is 5
+    minutes, bump it for longer videos."""
+    creation_id = await create_media_container(video_url=video_url, caption=caption, media_type="REELS")
+    await wait_until_ready(creation_id, timeout_seconds=timeout_seconds)
     return await publish_container(creation_id)
 
 
@@ -120,46 +138,29 @@ async def send_message(recipient_igsid: str, message: str) -> dict:
     return await graph_post(
         f"{_page_id()}/messages",
         data={
-            "recipient": f'{{"id":"{recipient_igsid}"}}',
-            "message": f'{{"text":"{message}"}}',
+            "recipient": json.dumps({"id": recipient_igsid}),
+            "message": json.dumps({"text": message}),
         },
     )
 
 
 async def list_unreplied_conversations(limit: int = 25) -> list[dict]:
-    """Return conversations whose latest message needs a reply.
-
-    The Page Conversations endpoint currently omits ``unread_count`` for
-    Instagram conversations (even when it is requested). Treating that
-    missing field as zero made every Instagram DM look already handled.
-    Instead, inspect the latest message: an incoming latest message needs a
-    reply, while an outgoing latest message means this account has already
-    replied. This also prevents repeat replies on later scheduler runs.
-    """
+    """Convenience function: returns Instagram DM conversations with
+    unread messages, each with the latest message and sender's IGSID."""
     conversations = await list_conversations(limit)
-    my_ig_id = _ig_user_id()
+    my_id = _page_id()
     unreplied = []
     for convo in conversations.get("data", []):
+        if convo.get("unread_count", 0) <= 0:
+            continue
         messages = await get_conversation_messages(convo["id"], limit=1)
         latest = messages.get("data", [{}])[0]
-        sender = latest.get("from", {})
-
-        # ``data`` is newest-first for this endpoint. Do not reply to a
-        # conversation whose newest item was sent by this Instagram account.
-        if not sender or sender.get("id") == my_ig_id:
-            continue
-
-        # Participant IDs in Instagram conversations are IGSIDs, not the
-        # Facebook Page ID, so compare them to the IG Business Account ID.
         participants = convo.get("participants", {}).get("data", [])
-        participant = next((p for p in participants if p.get("id") == sender.get("id")), {})
+        sender = next((p for p in participants if p.get("id") != my_id), {})
         unreplied.append({
             "conversation_id": convo["id"],
             "sender_igsid": sender.get("id", ""),
-            "sender_name": sender.get(
-                "username",
-                sender.get("name", participant.get("username", participant.get("name", "(unknown)"))),
-            ),
+            "sender_name": sender.get("username", sender.get("name", "(unknown)")),
             "message": latest.get("message", ""),
         })
     return unreplied

@@ -1,6 +1,3 @@
-# --------------------------------------------------
-# agentic_browser_v2 / tools\graph_tools.py
-# --------------------------------------------------
 """
 Meta Graph API tools — official API calls, no browser involved. Prefer
 these over browser automation whenever the target is your own Page/IG
@@ -42,6 +39,30 @@ async def graph_publish_instagram_photo(image_url: str, caption: str = "") -> st
         return f"Published Instagram photo: {result}"
     except Exception as e:
         return f"Error publishing Instagram photo: {e}"
+
+
+@tool
+async def graph_create_facebook_video_post(video_path_or_url: str, caption: str = "") -> str:
+    """Posts a video to the Facebook Page. video_path_or_url can be a
+    local file (uploaded directly) or a public URL."""
+    try:
+        result = await graph_pages.create_video_post(video_path_or_url, caption)
+        return f"Created Facebook video post: {result}"
+    except Exception as e:
+        return f"Error creating Facebook video post: {e}"
+
+
+@tool
+async def graph_publish_instagram_reel(video_url: str, caption: str = "") -> str:
+    """Publishes a Reel to the Instagram Business account. video_url
+    MUST be a public URL. Video processing is slow — this call can take
+    a couple minutes to return while it waits for Meta to finish
+    processing before publishing."""
+    try:
+        result = await graph_instagram.publish_reel(video_url, caption)
+        return f"Published Instagram Reel: {result}"
+    except Exception as e:
+        return f"Error publishing Instagram Reel: {e}"
 
 
 @tool
@@ -169,7 +190,9 @@ async def graph_reply_to_instagram_message(sender_igsid: str, message: str) -> s
 
 GRAPH_API_TOOLS = [
     graph_create_facebook_post,
+    graph_create_facebook_video_post,
     graph_publish_instagram_photo,
+    graph_publish_instagram_reel,
     graph_list_unreplied_comments,
     graph_reply_to_comment,
     graph_list_unreplied_instagram_comments,

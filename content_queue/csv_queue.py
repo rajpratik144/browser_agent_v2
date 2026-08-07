@@ -38,11 +38,12 @@ def remove_next_topic() -> None:
         writer.writerows(rows)
 
 
-def add_topic(topic: str, instructions: str) -> None:
-    """Appends a new topic to the end of the queue."""
+def add_topic(topic: str, instructions: str, image_url: str = "") -> None:
+    """Appends a new topic to the end of the queue. image_url is
+    optional — leave empty to auto-generate an image at post time."""
     is_new = not QUEUE_PATH.exists()
     with QUEUE_PATH.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["topic", "instructions"])
+        writer = csv.DictWriter(f, fieldnames=["topic", "instructions", "image_url"])
         if is_new:
             writer.writeheader()
-        writer.writerow({"topic": topic, "instructions": instructions})
+        writer.writerow({"topic": topic, "instructions": instructions, "image_url": image_url})
