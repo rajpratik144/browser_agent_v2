@@ -54,25 +54,29 @@ async def create_media_container(
     return result["id"]
 
 
-async def get_container_status(creation_id: str) -> str:
-    """Returns one of: EXPIRED, ERROR, FINISHED, IN_PROGRESS, PUBLISHED."""
-    result = await graph_get(creation_id, params={"fields": "status_code"})
-    return result["status_code"]
+async def get_container_status(creation_id: str) -> dict:
+    """Returns {"status_code": ..., "status": ...} — status_code is the
+    coarse state (EXPIRED/ERROR/FINISHED/IN_PROGRESS/PUBLISHED), status
+    is a more detailed string that often explains WHY on error."""
+    return await graph_get(creation_id, params={"fields": "status_code,status"})
 
 
 async def wait_until_ready(creation_id: str, timeout_seconds: int = 60) -> None:
     """Photos usually finish in a couple seconds; videos/Reels can take
     much longer (use a bigger timeout_seconds for those — see
     publish_reel's default). Polls status_code until FINISHED, or raises
-    on ERROR/EXPIRED/timeout."""
+    on ERROR/EXPIRED/timeout, including Meta's detailed status message
+    if there is one."""
     elapsed = 0
     interval = 2
     while elapsed < timeout_seconds:
-        status = await get_container_status(creation_id)
-        if status == "FINISHED":
+        result = await get_container_status(creation_id)
+        status_code = result.get("status_code")
+        if status_code == "FINISHED":
             return
-        if status in ("ERROR", "EXPIRED"):
-            raise RuntimeError(f"Media container {creation_id} failed: {status}")
+        if status_code in ("ERROR", "EXPIRED"):
+            detail = result.get("status", "(no additional detail returned)")
+            raise RuntimeError(f"Media container {creation_id} failed: {status_code} — {detail}")
         await asyncio.sleep(interval)
         elapsed += interval
     raise TimeoutError(f"Media container {creation_id} did not finish within {timeout_seconds}s")
@@ -145,21 +149,40 @@ async def send_message(recipient_igsid: str, message: str) -> dict:
 
 
 async def list_unreplied_conversations(limit: int = 25) -> list[dict]:
-    """Convenience function: returns Instagram DM conversations with
-    unread messages, each with the latest message and sender's IGSID."""
+    """Convenience function: returns Instagram DM conversations whose
+    latest message was NOT sent by us — i.e. still needs a reply.
+
+    Deliberately does NOT use unread_count: Meta frequently omits that
+    field entirely for Instagram conversations, which silently made
+    every conversation look "already read" and get skipped. Checking who
+    actually sent the latest message is reliable regardless.
+
+    IMPORTANT: "us" here must be compared against _ig_user_id() (the
+    Instagram Business Account ID), NOT _page_id() — the conversation's
+    participants and each message's from.id are all Instagram-scoped
+    IDs. Comparing against the Facebook Page ID never matches either
+    participant, and next() on a filter that matches "everyone" just
+    silently returns whichever participant happens to be first — which
+    was our own account, causing replies to be sent to ourselves."""
     conversations = await list_conversations(limit)
-    my_id = _page_id()
+    my_id = _ig_user_id()
     unreplied = []
     for convo in conversations.get("data", []):
-        if convo.get("unread_count", 0) <= 0:
-            continue
         messages = await get_conversation_messages(convo["id"], limit=1)
         latest = messages.get("data", [{}])[0]
+        if not latest:
+            continue
+        latest_sender_id = latest.get("from", {}).get("id", "")
+        if latest_sender_id == my_id:
+            continue  # we sent the last message — nothing to reply to
+
         participants = convo.get("participants", {}).get("data", [])
         sender = next((p for p in participants if p.get("id") != my_id), {})
+        sender_igsid = sender.get("id", "") or latest_sender_id
+
         unreplied.append({
             "conversation_id": convo["id"],
-            "sender_igsid": sender.get("id", ""),
+            "sender_igsid": sender_igsid,
             "sender_name": sender.get("username", sender.get("name", "(unknown)")),
             "message": latest.get("message", ""),
         })
