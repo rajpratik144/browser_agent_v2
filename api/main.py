@@ -13,7 +13,9 @@ see api/auth.py and .env's API_KEYS.
 from fastapi import FastAPI
 
 from api.db import init_db
-from api.routers import content, facebook, instagram, leads, monitoring
+from api.routers import content, direct_post, facebook, instagram, leads, monitoring, multi_platform, webhook
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="Agentic Browser API", version="1.0")
 
@@ -27,9 +29,21 @@ def on_startup():
 async def health():
     return {"status": "ok"}
 
+app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:4200"
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 app.include_router(facebook.router)
 app.include_router(instagram.router)
 app.include_router(content.router)
 app.include_router(leads.router)
 app.include_router(monitoring.router)
+app.include_router(webhook.router)
+app.include_router(direct_post.router)
+app.include_router(multi_platform.router)

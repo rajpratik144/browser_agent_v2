@@ -17,3 +17,4 @@ pypdf>=4.0
 fastapi>=0.110
 uvicorn>=0.29
 sqlalchemy>=2.0
+replicate

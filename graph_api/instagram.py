@@ -104,6 +104,46 @@ async def publish_reel(video_url: str, caption: str = "", timeout_seconds: int =
     await wait_until_ready(creation_id, timeout_seconds=timeout_seconds)
     return await publish_container(creation_id)
 
+async def create_carousel_item_container(url: str, is_video: bool = False) -> str:
+    """Creates ONE child container for a carousel — a photo or video that
+    will become one slide. is_carousel_item=true is what marks it as a
+    carousel child rather than a standalone post."""
+    data = {"is_carousel_item": "true"}
+    if is_video:
+        data["video_url"] = url
+        data["media_type"] = "VIDEO"
+    else:
+        data["image_url"] = url
+    result = await graph_post(f"{_ig_user_id()}/media", data=data)
+    return result["id"]
+
+
+async def publish_carousel(items: list[dict], caption: str = "") -> dict:
+    """items: [{"url": "...", "is_video": False}, ...] — 2 to 10 items,
+    mixed photos/videos is fine (Meta's own limit, enforced here too).
+    Creates each child container, waits for each to finish processing,
+    creates the parent CAROUSEL container, waits for it, then publishes.
+    Video children take much longer than photo children — this can take
+    several minutes total for a mixed/video-heavy carousel."""
+    if not 2 <= len(items) <= 10:
+        raise ValueError("Carousels need 2-10 items (Instagram's own limit).")
+
+    child_ids = []
+    for item in items:
+        child_id = await create_carousel_item_container(item["url"], item.get("is_video", False))
+        # Videos need real processing time; photos are near-instant —
+        # generous timeout covers either without slowing photo-only
+        # carousels down in practice (returns as soon as FINISHED).
+        await wait_until_ready(child_id, timeout_seconds=300)
+        child_ids.append(child_id)
+
+    parent_result = await graph_post(
+        f"{_ig_user_id()}/media",
+        data={"media_type": "CAROUSEL", "children": ",".join(child_ids), "caption": caption},
+    )
+    parent_id = parent_result["id"]
+    await wait_until_ready(parent_id, timeout_seconds=60)
+    return await publish_container(parent_id)
 
 async def get_recent_media(limit: int = 10) -> dict:
     """Reads the IG account's recent media (id, caption, timestamp, permalink)."""

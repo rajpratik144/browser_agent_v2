@@ -188,6 +188,32 @@ async def graph_reply_to_instagram_message(sender_igsid: str, message: str) -> s
         return f"Error sending Instagram message to {sender_igsid}: {e}"
 
 
+@tool
+async def graph_create_facebook_multi_photo_post(image_urls: list[str], caption: str = "") -> str:
+    """Creates ONE Facebook Page post with multiple photos attached (2+
+    required — for a single photo use graph_create_facebook_post
+    instead). Each URL can be a public URL or local file path."""
+    try:
+        result = await graph_pages.create_multi_photo_post(image_urls, caption)
+        return f"Created Facebook multi-photo post: {result}"
+    except Exception as e:
+        return f"Error creating Facebook multi-photo post: {e}"
+
+
+@tool
+async def graph_publish_instagram_carousel(items: list[dict], caption: str = "") -> str:
+    """Publishes an Instagram carousel — 2 to 10 photos/videos swiped
+    through as one post. Each item in the list needs {"url": "...",
+    "is_video": true/false}. All URLs must be public. Can take several
+    minutes if the carousel includes video — wait for the result rather
+    than assuming failure."""
+    try:
+        result = await graph_instagram.publish_carousel(items, caption)
+        return f"Published Instagram carousel: {result}"
+    except Exception as e:
+        return f"Error publishing Instagram carousel: {e}"
+
+
 GRAPH_API_TOOLS = [
     graph_create_facebook_post,
     graph_create_facebook_video_post,
@@ -203,4 +229,6 @@ GRAPH_API_TOOLS = [
     graph_reply_to_instagram_message,
     graph_fetch_leads,
     graph_list_lead_forms,
+    graph_create_facebook_multi_photo_post,
+    graph_publish_instagram_carousel
 ]

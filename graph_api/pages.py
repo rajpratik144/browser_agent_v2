@@ -6,7 +6,7 @@ user token, or on the Page's own "About" settings.
 """
 
 import os
-
+import json
 from .client import graph_delete, graph_get, graph_post
 
 
@@ -47,6 +47,30 @@ async def create_video_post(video_path_or_url: str, caption: str = "") -> dict:
     with open(video_path_or_url, "rb") as f:
         return await graph_post(f"{_page_id()}/videos", data=data, files={"source": f})
 
+async def create_multi_photo_post(image_paths_or_urls: list[str], caption: str = "") -> dict:
+    """Creates ONE post with multiple photos attached (a Facebook album-
+    style post, not separate posts). Each item can be a local file path
+    or a public URL, mixed is fine. NOTE: Facebook Page posts don't
+    support multiple videos in one native post the way photos work —
+    this is photos only."""
+    if len(image_paths_or_urls) < 2:
+        raise ValueError("Use create_photo_post for a single image — this is for 2+ photos.")
+
+    media_ids = []
+    for item in image_paths_or_urls:
+        data = {"published": "false"}
+        if item.startswith("http://") or item.startswith("https://"):
+            data["url"] = item
+            result = await graph_post(f"{_page_id()}/photos", data=data)
+        else:
+            with open(item, "rb") as f:
+                result = await graph_post(f"{_page_id()}/photos", data=data, files={"source": f})
+        media_ids.append(result["id"])
+
+    post_data = {"message": caption}
+    for i, media_id in enumerate(media_ids):
+        post_data[f"attached_media[{i}]"] = json.dumps({"media_fbid": media_id})
+    return await graph_post(f"{_page_id()}/feed", data=post_data)
 
 async def get_recent_posts(limit: int = 10) -> dict:
     """Reads the Page's most recent posts (id, message, created_time)."""

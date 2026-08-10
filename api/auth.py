@@ -7,7 +7,10 @@ client_id field).
 
 import os
 
-from fastapi import Header, HTTPException
+from fastapi import HTTPException, Security
+from fastapi.security import APIKeyHeader
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 
 def _valid_keys() -> dict[str, str]:
@@ -29,7 +32,7 @@ def _valid_keys() -> dict[str, str]:
     return keys
 
 
-async def require_api_key(x_api_key: str = Header(...)) -> str:
+async def require_api_key(x_api_key: str = Security(api_key_header)) -> str:
     """FastAPI dependency — raises 401 on a bad/missing key, otherwise
     returns the client_id for that key (use this for logging)."""
     keys = _valid_keys()
