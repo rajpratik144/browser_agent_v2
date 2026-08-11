@@ -21,7 +21,7 @@ import asyncio
 import json
 import os
 
-from .client import graph_get, graph_post
+from .client import graph_get, graph_post,graph_delete
 from .pages import _page_id
 
 
@@ -273,3 +273,12 @@ async def list_unreplied_comments(recent_media_limit: int = 50, comments_per_med
                     "from_name": comment.get("username", "(unknown)"),
                 })
     return unreplied
+
+
+async def delete_media(media_id: str) -> dict:
+    """Deletes an Instagram post, Reel, Story, or an entire carousel
+    (pass the carousel's own container media_id, not a slide's id —
+    Meta does not support deleting individual carousel slides, only the
+    whole album). Requires instagram_manage_contents permission.
+    Irreversible."""
+    return await graph_delete(media_id)

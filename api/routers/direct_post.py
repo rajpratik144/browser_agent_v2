@@ -23,6 +23,9 @@ class InstagramDirectPostRequest(BaseModel):
     caption: str = ""
     image_url: str  # required — Instagram has no text-only posts
 
+class InstagramDirectReelRequest(BaseModel):
+    caption: str = ""
+    video_url: str  
 
 class MultiPhotoRequest(BaseModel):
     caption: str = ""
@@ -71,6 +74,19 @@ async def instagram_post_direct(body: InstagramDirectPostRequest, client_id: str
         raise HTTPException(status_code=502, detail=error)
     return result
 
+@router.post("/instagram/posts/direct_reel")
+async def instagram_reel_direct(body: InstagramDirectReelRequest, client_id: str = Depends(require_api_key)):
+    with Timer() as t:
+        try:
+            result = await graph_instagram.publish_reel(body.video_url, caption=body.caption)
+            success, error = True, None
+        except Exception as e:
+            result, success, error = None, False, str(e)
+    log_call(client_id, "instagram", "post_direct_reel", "/instagram/posts/direct_reel", body.model_dump(),
+              success, t.duration_ms, str(result), error)
+    if not success:
+        raise HTTPException(status_code=502, detail=error)
+    return result
 
 @router.post("/facebook/posts/multi-photo")
 async def facebook_multi_photo_direct(body: MultiPhotoRequest, client_id: str = Depends(require_api_key)):

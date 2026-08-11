@@ -1,11 +1,13 @@
 """Instagram endpoints — same pattern as facebook.py."""
 
+from fastapi import HTTPException
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from agent.orchestrator import run_agent_task
 from api.auth import require_api_key
 from api.request_logging import Timer, log_call
+from graph_api import instagram as graph_instagram
 
 router = APIRouter(prefix="/instagram", tags=["instagram"])
 
@@ -64,4 +66,19 @@ async def reply_to_all_messages(client_id: str = Depends(require_api_key)):
         result = await run_agent_task("instagram_reply_to_messages", {}, use_browser=False)
     log_call(client_id, "instagram", "reply_messages", "/instagram/messages/reply-all", {},
               result.get("success", False), t.duration_ms, str(result.get("result", "")))
+    return result
+
+
+@router.delete("/posts/{media_id}")
+async def delete_media(media_id: str, client_id: str = Depends(require_api_key)):
+    with Timer() as t:
+        try:
+            result = await graph_instagram.delete_media(media_id)
+            success, error = True, None
+        except Exception as e:
+            result, success, error = None, False, str(e)
+    log_call(client_id, "instagram", "delete_media", f"/instagram/posts/{media_id}", {"media_id": media_id},
+              success, t.duration_ms, str(result), error)
+    if not success:
+        raise HTTPException(status_code=502, detail=error)
     return result

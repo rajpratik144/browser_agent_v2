@@ -213,6 +213,28 @@ async def graph_publish_instagram_carousel(items: list[dict], caption: str = "")
     except Exception as e:
         return f"Error publishing Instagram carousel: {e}"
 
+@tool
+async def graph_delete_facebook_post(post_id: str) -> str:
+    """Deletes a Facebook Page post. post_id looks like
+    "PAGEID_POSTID". Irreversible."""
+    try:
+        result = await graph_pages.delete_post(post_id)
+        return f"Deleted Facebook post {post_id}: {result}"
+    except Exception as e:
+        return f"Error deleting Facebook post {post_id}: {e}"
+
+
+@tool
+async def graph_delete_instagram_media(media_id: str) -> str:
+    """Deletes an Instagram post, Reel, Story, or entire carousel (pass
+    the carousel's own container id, not a slide's — individual slides
+    can't be deleted). Irreversible."""
+    try:
+        result = await graph_instagram.delete_media(media_id)
+        return f"Deleted Instagram media {media_id}: {result}"
+    except Exception as e:
+        return f"Error deleting Instagram media {media_id}: {e}"
+
 
 GRAPH_API_TOOLS = [
     graph_create_facebook_post,
@@ -230,5 +252,7 @@ GRAPH_API_TOOLS = [
     graph_fetch_leads,
     graph_list_lead_forms,
     graph_create_facebook_multi_photo_post,
-    graph_publish_instagram_carousel
+    graph_publish_instagram_carousel,
+    graph_delete_facebook_post,
+    graph_delete_instagram_media
 ]
