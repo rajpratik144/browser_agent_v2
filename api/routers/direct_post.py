@@ -18,6 +18,9 @@ class FacebookDirectPostRequest(BaseModel):
     caption: str = ""
     image_url: str = ""  # optional — omit for a text-only post
 
+class FacebookDirectVideoRequest(BaseModel):
+    caption: str = ""
+    video_url: str = ""
 
 class InstagramDirectPostRequest(BaseModel):
     caption: str = ""
@@ -72,6 +75,20 @@ async def instagram_post_direct(body: InstagramDirectPostRequest, client_id: str
               success, t.duration_ms, str(result), error)
     if not success:
         raise HTTPException(status_code=502, detail=error)
+    return result
+
+@router.post("/facebook/posts/direct_video")
+async def facebook_post_direct_video(body: FacebookDirectVideoRequest, client_id: str = Depends(require_api_key)):
+    with Timer() as t:
+        try:
+            result = await graph_pages.create_video_post(body.video_url,caption= body.caption)
+            success, error = True, None
+        except Exception as e:
+            result,success,error = None,False,str(e)
+    log_call(client_id,"facebook", "video_direct","/facebook/posts/direct_video",body.model_dump(),
+            success, t.duration_ms, str(result),error)
+    if not success:
+        raise HTTPException(status_code=502,detail=error)
     return result
 
 @router.post("/instagram/posts/direct_reel")

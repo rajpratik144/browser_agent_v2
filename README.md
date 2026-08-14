@@ -143,6 +143,28 @@ CragEngine(knowledge_dir="knowledge/company_docs", force_rebuild=True)
 `crag/vector_store.py` — old vectors aren't valid input for a different
 embedding model.)
 
+### Editor draft generation API
+
+`POST /content/drafts` turns a topic and/or source content into one editable,
+professional social-post draft. It does **not** enqueue, upload, schedule, or
+publish anything. The frontend can call it again with the same input and an
+incremented `version` to request an alternative.
+
+```json
+{
+  "topic": "How AI can simplify customer support",
+  "content": "Our platform helps teams route common questions faster.",
+  "instructions": "Professional and approachable. Keep it under 100 words.",
+  "version": 1
+}
+```
+
+It requires the normal `X-API-Key` header and returns:
+
+```json
+{"draft": "...", "version": 1}
+```
+
 ## Graph API
 
 `graph_api/` — `pages.py` (posts, photos), `instagram.py` (publish,

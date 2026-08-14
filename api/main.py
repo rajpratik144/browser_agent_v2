@@ -13,7 +13,7 @@ see api/auth.py and .env's API_KEYS.
 from fastapi import FastAPI
 
 from api.db import init_db
-from api.routers import content, direct_post, facebook, instagram, leads, monitoring, multi_platform, webhook
+from api.routers import content, direct_post, facebook, instagram, leads, monitoring, multi_platform, webhook, multi_platform_direct, post_drafts
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -46,4 +46,6 @@ app.include_router(leads.router)
 app.include_router(monitoring.router)
 app.include_router(webhook.router)
 app.include_router(direct_post.router)
-app.include_router(multi_platform.router)
+app.include_router(multi_platform.router) 
+app.include_router(multi_platform_direct.router)
+app.include_router(post_drafts.router)

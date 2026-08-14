@@ -37,10 +37,26 @@ async def create_photo_post(image_path: str, caption: str = "") -> dict:
         )
 
 
+# async def create_video_post(video_path_or_url: str, caption: str = "") -> dict:
+#     """Posts a video to the Page's feed. video_path_or_url can be a local
+#     file path (uploaded directly) or a public video URL."""
+#     data = {"description": caption}
+#     if video_path_or_url.startswith("http://") or video_path_or_url.startswith("https://"):
+#         data["file_url"] = video_path_or_url
+#         return await graph_post(f"{_page_id()}/videos", data=data)
+#     with open(video_path_or_url, "rb") as f:
+#         return await graph_post(f"{_page_id()}/videos", data=data, files={"source": f})
+
 async def create_video_post(video_path_or_url: str, caption: str = "") -> dict:
     """Posts a video to the Page's feed. video_path_or_url can be a local
-    file path (uploaded directly) or a public video URL."""
-    data = {"description": caption}
+    file path (uploaded directly) or a public video URL. Explicitly sets
+    privacy to EVERYONE — videos have shown a pattern of not reliably
+    reaching non-admin viewers via feed distribution otherwise, even
+    when the video object itself is technically public."""
+    data = {
+        "description": caption,
+        "privacy": json.dumps({"value": "Public"}),
+    }
     if video_path_or_url.startswith("http://") or video_path_or_url.startswith("https://"):
         data["file_url"] = video_path_or_url
         return await graph_post(f"{_page_id()}/videos", data=data)
