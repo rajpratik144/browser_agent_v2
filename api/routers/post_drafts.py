@@ -17,17 +17,17 @@ router = APIRouter(prefix="/content/drafts", tags=["content-drafts"])
 
 
 class DraftRequest(BaseModel):
-    """Source material for one independently generated post draft."""
+    """Single free-form field: topic, raw content, and/or instructions —
+    all mixed together in one block of text, exactly as the frontend
+    captures it from the user."""
 
-    topic: str = Field(default="", max_length=2_000)
-    content: str = Field(default="", max_length=12_000)
-    instructions: str = Field(default="", max_length=4_000)
+    content: str = Field(..., min_length=1, max_length=12_000)
     version: int = Field(default=1, ge=1, le=100)
 
     @model_validator(mode="after")
     def has_source_material(self):
-        if not self.topic.strip() and not self.content.strip():
-            raise ValueError("Provide at least one of: topic or content.")
+        if not self.content.strip():
+            raise ValueError("content must not be empty.")
         return self
 
 
@@ -55,20 +55,19 @@ def _prompt(body: DraftRequest) -> str:
         )
 
     return f"""You are a professional social-media copywriter.
-Create one polished, creative, publication-ready text post from the supplied source material.
+Create one polished, creative, publication-ready text post from the material below.
 
-Topic:
-{body.topic.strip() or "(not supplied)"}
+The material may contain a topic, raw content, specific instructions, or a mix of all
+three, all together in a single block of text — read it carefully and work out what's
+source material to draw from versus what's an instruction to follow (e.g. tone,
+length, format, things to include or avoid).
 
-Source content:
-{body.content.strip() or "(not supplied)"}
-
-User instructions:
-{body.instructions.strip() or "(not supplied)"}
+Material:
+{body.content.strip()}
 
 Requirements:
 - Preserve factual claims from the supplied material. Do not invent company facts, results, prices, features, or announcements.
-- Follow the user's instructions when they do not conflict with the supplied material.
+- Follow any instructions embedded in the material when they do not conflict with the source content.
 - Use a clear, engaging professional tone and a natural structure suitable for a social post.
 - Include a concise call to action only when it fits the supplied material.
 - Return only the draft text. Do not add a title, analysis, quotation marks, labels, or Markdown code fences.
@@ -92,16 +91,14 @@ async def generate_post_draft(body: DraftRequest, client_id: str = Depends(requi
         except Exception as exc:
             log_call(
                 client_id, None, "generate_post_draft", "/content/drafts",
-                {"topic": body.topic, "content_length": len(body.content),
-                 "instructions": body.instructions, "version": body.version},
+                {"content_length": len(body.content), "version": body.version},
                 False, t.duration_ms, error_message=str(exc),
             )
             raise HTTPException(status_code=502, detail="Unable to generate a post draft.") from exc
 
     log_call(
         client_id, None, "generate_post_draft", "/content/drafts",
-        {"topic": body.topic, "content_length": len(body.content),
-         "instructions": body.instructions, "version": body.version},
+        {"content_length": len(body.content), "version": body.version},
         True, t.duration_ms, result_summary=f"draft_length={len(draft)}",
     )
     return {"draft": draft, "version": body.version}
