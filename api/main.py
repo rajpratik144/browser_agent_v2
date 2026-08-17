@@ -32,7 +32,8 @@ async def health():
 app.add_middleware(
         CORSMiddleware,
         allow_origins=[
-            "http://localhost:4200"
+            "http://localhost:4200",
+            "http://localhost:4300",
         ],
         allow_credentials=True,
         allow_methods=["*"],
